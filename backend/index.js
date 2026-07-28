@@ -10,7 +10,6 @@ app.use(express.json())
 
 app.post("/api/v1/shorten", async (req, res)=>{
     const {longURL, expireAt} = req.body;
-    console.log(req.body);
 
     if(!longURL){
         return res.status(400).json({error: "longURL is required"});
@@ -30,21 +29,26 @@ app.post("/api/v1/shorten", async (req, res)=>{
 });
 app.get("/:code", async(req, res) => {
     const {code} = req.params
+    const connection  = await db.getConnection()
     try{
-        const [rows] = await db.query("Select id, longURL from urls where shortCode = ?", [code]);
+        const [rows] = await db.query("Select id, longURL from urls where shortCode = (?) and (expiresAt is NULL OR expiresAT > NOW())", [code]);
         if(!rows.length){
             return res.status(404).json({error: "Short URL not found"});
         }
+
+        await connection.beginTransaction()
+        const result = await connection.query(`Update urls set clickCount = clickCount + 1 where shortCode = ?`, [code]);
+
+
+        const data = await connection.query(`Insert into analytics (urlId, ipAddress, browser, country, device, clickedAt) values (?, ?, ?, ?, ?, ?)`, [rows[0].id, req.ip, req.headers['user-agent'], 'India', 'Desktop', new Date()]);
+
+        await connection.commit()
+
         res.redirect(rows[0].longURL)
-
-        const result = await db.query(`Update urls set clickCount = clickCount + 1 where shortCode = ?`, [code]);
-
-
-        const data = await db.query(`Insert into analytics (urlId, ipAddress, browser, country, device, clickedAt) values (?, ?, ?, ?, ?, ?)`, [rows[0].id, req.ip, req.headers['user-agent'], 'India', 'Desktop', new Date()]);
-
 
         // res.status(200).json({longURL: rows[0].longURL});
     }catch(err){
+        await connection.rollback()
         console.log(err);
         return res.status(500).json({error: "Internal Server Error"});
     }
