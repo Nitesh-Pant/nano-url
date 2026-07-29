@@ -1,11 +1,11 @@
 const expiryMap = {
-        "10s": 0.1667,
-        "1m": 1,
-        "5m": 5,
-        "30m": 30,
-        "1h": 60,
-        "1d": 1440,
-        "7d": 10080,
+    "10s": 0.1667,
+    "1m": 1,
+    "5m": 5,
+    "30m": 30,
+    "1h": 60,
+    "1d": 1440,
+    "7d": 10080,
 };
 
 const redisExpiryMap = {
@@ -18,4 +18,13 @@ const redisExpiryMap = {
     "7d": 604800,
 };
 
-export { expiryMap, redisExpiryMap };
+const intervalMap = {
+    "10s": " 10 SECOND",
+    "1m": " 1 MINUTE",
+    "30m": " 30 MINUTE",
+    "1h": " 1 HOUR",
+    "1d": " 1 DAY",
+    "7d": " 7 DAY",
+}
+
+export { expiryMap, redisExpiryMap, intervalMap };
