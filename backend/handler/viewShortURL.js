@@ -1,7 +1,8 @@
 import db from '../db.js';
 import redisClient from '../redis.js';
 import {UAParser} from "ua-parser-js";
-import axios from 'axios';
+import geopip from 'geoip-lite';
+import { redisExpiryMap } from '../utils.js';
 
 export const redirectURL = async(req, res) => {
     const {code} = req.params
@@ -22,7 +23,7 @@ export const redirectURL = async(req, res) => {
             res.redirect(url)
         }else{
             // if short code does not exist in cache then check in database
-            const [rows] = await connection.query("Select id, longURL from urls where shortCode = (?) and (expiresAt is NULL OR expiresAT > NOW())", [code]);
+            const [rows] = await connection.query("Select id, longURL from urls where shortCode = (?) and (expiresAt is NULL OR expiresAT > UTC_TIMESTAMP())", [code]);
             if(!rows.length){
                 return res.status(404).json({error: "Short URL not found"});
             }
@@ -30,14 +31,16 @@ export const redirectURL = async(req, res) => {
             url = rows[0].longURL;
 
             const value  = JSON.stringify({ id: rowId, longURL: url })
+            console.log("Cache miss for code:", code, "URL:", url, "Adding to cache with expiry:", redisExpiryMap["1d"])
             await redisClient.set(`url:${code}`, value, {EX: redisExpiryMap["1d"]})
         }
 
         // 3rd party for getting country from ip
-        const ipInfo = await axios.get(`http://ip-api.com/json/${req.ip}`); // 182.79.100.178
-        const browserName = browser?.name || null
-        const countryName = ipInfo?.data?.country || null
-        const deviceName = device?.type || null
+        // const ipInfo = await axios.get(`http://ip-api.com/json/${req.ip}`); // 182.79.100.178
+        const geo = geopip.lookup(req.ip)
+        const browserName = browser?.name || "Unknown"
+        const countryName = geo?.country/* ipInfo?.data?.country*/ || "Unknown"
+        const deviceName = device?.type || "desktop"
 
         // increment click count and insert analytics data in a transaction
         await connection.beginTransaction()

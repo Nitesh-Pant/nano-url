@@ -20,8 +20,7 @@ export const createShortURL = async (req, res)=>{
         expiresAt_ = new Date(Date.now() + (expiryMap[expiresAt] || process.env.TTL_7_DAYS) * 60 * 1000);
     }
     try{
-
-        const [response] = await db.query("Select * from urls where longURL =(?) and (expiresAt is NULL OR expiresAT < NOW())", [longURL]);
+        const [response] = await db.query("Select * from urls where longURL =(?) and (expiresAt is NULL OR expiresAT > UTC_TIMESTAMP())", [longURL]);
 
         if(response.length){
             return res.status(200).json({shortUrl: `${process.env.BASE_URL}/${response[0].shortCode}`});
@@ -31,7 +30,6 @@ export const createShortURL = async (req, res)=>{
         const shortCode = nanoid(7);
 
         const [result] = await db.query("Insert into urls (longURL, shortCode, expiresAt) values (?, ?, ?)", [longURL, shortCode, expiresAt_]);
-
         const value  = JSON.stringify({ id: result.insertId, longURL })
 
         // update redis cache with the new short code and long URL with expiry time
