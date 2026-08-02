@@ -10,11 +10,13 @@ NanoURL allows users to generate short URLs, optionally expire them, redirect us
 - ♻️ Reuse existing short URLs for active links
 - ⏳ Optional link expiration
 - 🚀 Redis caching for faster redirects
+- ⚡ Background analytics processing using BullMQ
 - 🐳 Docker support
 - 📊 Click tracking
 - 🌐 Capture basic analytics
     - IP Address
     - Browser
+    - Country
     - Device
     - Click timestamp
 - 🔒 URL validation
@@ -57,7 +59,13 @@ NanoURL allows users to generate short URLs, optionally expire them, redirect us
                     Cache in Redis (TTL)
                               │
                               ▼
-                   Update Analytics (MySQL)
+                    Push Analytics Job (BullMQ)
+                              │
+                              ▼
+                         BullMQ Worker
+                              │
+                              ▼
+                    Update Analytics (MySQL)
                               │
                               ▼
                          Redirect User
@@ -75,7 +83,9 @@ NanoURL allows users to generate short URLs, optionally expire them, redirect us
 - mysql2
 - nanoid
 - ua-parser-js
-- axios
+- BullMQ
+- geoip-lite
+- ioredis
 
 ---
 
@@ -84,10 +94,14 @@ NanoURL allows users to generate short URLs, optionally expire them, redirect us
 ```
 backend
 │
-├── handlers
+├── handler
 │   ├── generateShortURL.js
 │   ├── viewShortURL.js
 │   └── generateAnalytics.js
+│
+├── queue
+│   ├── queue.js
+│   └── worker.js
 │
 ├── db.js
 ├── redis.js
@@ -143,7 +157,11 @@ REDIS_PORT=6379
 ### Start the server
 
 ```bash
-npm start
+# Terminal 1
+npm run dev
+
+# Terminal 2
+npm run worker
 ```
 
 ---
@@ -264,10 +282,15 @@ GET /api/v1/analytics/abc1234?timeRange=1d
 ```json
 {
 	"totalClicks": 15,
-	"browser": {
-		"Chrome": 66.67,
-		"Firefox": 20,
-		"Safari": 13.33
+	"browser (%)": {
+		"Chrome": 80,
+		"Firefox": 20
+	},
+	"country (%)": {
+		"IN": 100
+	},
+	"device (%)": {
+		"desktop": 100
 	}
 }
 ```
@@ -325,3 +348,16 @@ Stores
 - Click Timestamp
 
 ---
+
+# ⚙️ Background Jobs
+
+BullMQ is used to process analytics asynchronously.
+
+When a user visits a short URL:
+
+1. The application immediately redirects the user.
+2. An analytics job is pushed to BullMQ.
+3. The worker processes the job in the background.
+4. Click count and analytics are stored in MySQL.
+
+This keeps redirects fast and prevents database operations from blocking user requests.

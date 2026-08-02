@@ -4,7 +4,7 @@ import { expiryMap, redisExpiryMap } from "../utils.js";
 import { nanoid } from "nanoid";
 
 export const createShortURL = async (req, res)=>{
-    let {longURL, expiresAt} = req.body;
+    let {longURL, expiresAt="7d"} = req.body;
 
     if(!longURL){
         return res.status(400).json({error: "longURL is required"});
@@ -15,6 +15,9 @@ export const createShortURL = async (req, res)=>{
         return res.status(400).json({error: "longURL is not valid"});
     }
     let expiresAt_;
+    if(!expiryMap[expiresAt]){
+        return res.status(400).json({error: "expiresAt is not valid"});
+    }
 
     if(expiresAt){
         expiresAt_ = new Date(Date.now() + (expiryMap[expiresAt] || process.env.TTL_7_DAYS) * 60 * 1000);
