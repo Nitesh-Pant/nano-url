@@ -1,6 +1,6 @@
 # NanoURL 🔗
 
-NanoURL is a lightweight URL shortener built with **Node.js**, **Express.js**, **MySQL**, and **Redis**.
+NanoURL is a lightweight URL shortener built with **Node.js**, **Express.js**, **MySQL**, **Redis** and **BullMQ**.
 
 NanoURL allows users to generate short URLs, optionally expire them, redirect users efficiently using Redis caching, and collect basic click analytics.
 
@@ -268,14 +268,14 @@ GET /api/v1/analytics/abc1234?timeRange=1d
 
 ### Supported Time Ranges
 
-| Value |
-| ----- |
-| 10s   |
-| 1m    |
-| 30m   |
-| 1h    |
-| 1d    |
-| 7d    |
+| Value | Duration   |
+| ----- | ---------- |
+| 10s   | 10 Seconds |
+| 1m    | 1 Minute   |
+| 30m   | 30 Minute  |
+| 1h    | 1 Hour     |
+| 1d    | 1 Day      |
+| 7d    | 7 Days     |
 
 ### Response
 
@@ -361,3 +361,13 @@ When a user visits a short URL:
 4. Click count and analytics are stored in MySQL.
 
 This keeps redirects fast and prevents database operations from blocking user requests.
+
+### Retry Strategy
+
+To improve reliability, failed jobs are retried automatically.
+
+- **Attempts:** 3
+- **Backoff:** Exponential
+- **Initial Delay:** 5 seconds
+
+If a job succeeds on any retry, it is removed from the queue. Failed jobs are also removed after all retry attempts are exhausted.

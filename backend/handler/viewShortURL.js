@@ -40,7 +40,11 @@ export const redirectURL = async(req, res) => {
         // add job to analytics queue for processing
         queue.add('analyticsJob', {
             ip: req.ip, browser, device, code, rowId},
-            {removeOnComplete: true, removeOnFail: true}
+            {attempts: 3,           // retry 3 times if job fails
+                 backoff: {
+                    type: 'exponential', delay: 5000    // retry after 5 seconds, then 10 seconds, then 20 seconds
+                },
+            removeOnComplete: true, removeOnFail: true} // remove job from queue after completion or failure
         ).catch(err=>{
             console.log("Error adding job to queue:", err);
         });

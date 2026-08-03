@@ -29,6 +29,7 @@ const worker = new Worker('analyticsQueue', async (job)=>{
     }catch(err){
         await connection.rollback();
         console.log(err);
+        throw err;  // because we want the job to be retried if it fails
     }
 }, {connection: queueConnection})
 

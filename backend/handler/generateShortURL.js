@@ -14,13 +14,13 @@ export const createShortURL = async (req, res)=>{
     }catch(err){
         return res.status(400).json({error: "longURL is not valid"});
     }
-    let expiresAt_;
+    let expiresAtForDB;
     if(!expiryMap[expiresAt]){
         return res.status(400).json({error: "expiresAt is not valid"});
     }
 
     if(expiresAt){
-        expiresAt_ = new Date(Date.now() + (expiryMap[expiresAt] || process.env.TTL_7_DAYS) * 60 * 1000);
+        expiresAtForDB = new Date(Date.now() + expiryMap[expiresAt] * 60 * 1000);
     }
     try{
         const [response] = await db.query("Select * from urls where longURL =(?) and (expiresAt is NULL OR expiresAT > UTC_TIMESTAMP())", [longURL]);
@@ -32,11 +32,11 @@ export const createShortURL = async (req, res)=>{
         // generate a unique short code using nanoid
         const shortCode = nanoid(7);
 
-        const [result] = await db.query("Insert into urls (longURL, shortCode, expiresAt) values (?, ?, ?)", [longURL, shortCode, expiresAt_]);
+        const [result] = await db.query("Insert into urls (longURL, shortCode, expiresAt) values (?, ?, ?)", [longURL, shortCode, expiresAtForDB]);
         const value  = JSON.stringify({ id: result.insertId, longURL })
 
         // update redis cache with the new short code and long URL with expiry time
-        const ttl = redisExpiryMap[expiresAt] || process.env.TTL_7_DAYS // expire automiactly after 7 days
+        const ttl = redisExpiryMap[expiresAt]
         await redisClient.set(`url:${shortCode}`, value, {EX: ttl})
 
         // console.log(await redisClient.get(`url:${shortCode}`));

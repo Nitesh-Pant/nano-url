@@ -3,14 +3,14 @@ import {  intervalMap } from "../utils.js";
 
 export const generateAnalytics = async (req, res)=>{
     const {shortCode} = req.params;
-    const {timeRange} = req.query;
+    const {timeRange="7d"} = req.query;
 
     if(!shortCode){
         return res.status(400).json({error: "Shortcode is required"})
     }
 
     // query for urls and analytics
-    const [result] = await db.query(`Select u.clickCount, a.browser, a.country, a.device, a.clickedAt from urls as u JOIN analytics as a on u.id = a.urlId where u.shortCode = (?) and u.createdAt >= UTC_TIMESTAMP() - INTERVAL${intervalMap[timeRange]}`, [shortCode]);
+    const [result] = await db.query(`Select u.clickCount, a.browser, a.country, a.device, a.clickedAt from urls as u JOIN analytics as a on u.id = a.urlId where u.shortCode = (?) and a.clickedAt >= UTC_TIMESTAMP() - INTERVAL${intervalMap[timeRange]}`, [shortCode]);
 
     let analyticsObj = {}
     if(result.length){
